@@ -1,0 +1,8 @@
+The target compounds will be obtained, isolated and characterized using modern tools of synthetic and physical organic chemistry using cross-combination reactions, condensation, etc. 
+Using the methods of crystallization from solution, as well as the method of physical steam transport (FPT), crystalline samples of the studied compounds will be obtained, their structure and morphology will be studied using microscopy methods. 
+The crystal structure of the studied compounds will be determined by X-ray diffraction analysis. 
+The optical properties will be investigated using UV and fluorescence spectroscopy in solution and solid phase. 
+The sensory properties of the obtained compounds and materials will be studied in a solution of various analytes and in the solid phase when exposed to various stimuli. 
+The semiconductor properties of the obtained materials will be studied using the method of organic field-effect transistors of various architectures. 
+The molecular structure, torsion barriers, energies of boundary orbitals and charge transfer will be investigated using quantum chemical calculation methods. 
+The most effective positions of nitrogen atoms in fluorenes will be revealed, as well as the most advantageous options for joining linear, conformationally mobile, planar, substituted structures for obtaining promising materials for organic photonics, electronics and sensors.

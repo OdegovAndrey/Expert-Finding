@@ -34,10 +34,16 @@ def get_field(_field_name, _top_authors, _searcher):
 def get_scores(_top_authors):
     return [_author.score for _author in _top_authors]
 
+def recover(_token, _query):
+    if _query.find(_token) == -1:
+        return _token
+    else:
+        return re.split(r'[ ,.]',_query[_query.find(_token):])[0]
+
 def get_details(_top_authors, _query, _details_number, _searcher, _analyzer):
     _result = []
     _parsed_query = QueryParser("abstract", _analyzer).parse(_query)
-    for _number, _author in enumerate(_top_authors):
+    for _author in _top_authors:
         _raw_details =_searcher.explain(_parsed_query, _author.doc).getDetails()
         _details = []
         for _raw_detail in _raw_details:
@@ -46,10 +52,11 @@ def get_details(_top_authors, _query, _details_number, _searcher, _analyzer):
         _top_details = sorted(_details, key=lambda _detail: -_detail[0])[:_details_number]
         _result.append('')
         for _detail in _top_details:
-            _result[-1] += f"{_detail[1]:<15s}{_detail[0]:4.1f}|| "
+            _result[-1] += f"{recover(_detail[1], query):<15s}{_detail[0]:4.1f}|| "
     return _result
 
 def search_for_query(_query, _top_number, _details_number, _path, _similarity, _analyzer):
+    _query = cleaner(_query)
     _directory = open_directory(_path)
     _searcher = make_searcher(_directory, _similarity)
     _top_authors = score_authors(_searcher, _query, _analyzer, _top_number)

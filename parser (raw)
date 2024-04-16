@@ -777,7 +777,7 @@ for i, page in enumerate(pager):
 
         except Exception:
             requests.post("https://ntfy.sh/228-1337-scientific-parser-666", data="Error".encode(encoding='utf-8'))
-            print(f"Fuck! {traceback.format_exc()} {work['doi']}")
+            print(f"Error! {traceback.format_exc()} {work['doi']}")
             skipped_dois.append(url_cnt)
     
     

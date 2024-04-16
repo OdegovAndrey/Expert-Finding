@@ -1,0 +1,784 @@
+from pyalex import Works
+import traceback
+
+from bs4 import BeautifulSoup
+import time
+import tqdm
+from translate import Translator
+from transliterate import translit
+import requests
+
+from selenium.common.exceptions import WebDriverException
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.common.action_chains import ActionChains
+
+import csv
+import datetime
+
+def get_xpath(code_url):
+    xpath = ["0"]
+    if  code_url == "10.7453" or code_url == "10.7452" or code_url == "10.1088" or code_url == "10.1070" or code_url == "10.1149" or code_url == "10.1209": #IOPscience
+        xpath = ["//*[@id=\"page-content\"]/div[3]/div[2]/div[1]/p"]
+        
+    elif  code_url == "10.1016" or code_url == "10.1006" or code_url == "10.1053" or code_url == "10.3182": #ScienceDirect
+        xpath = ["//*[starts-with(@id, \"d1e\")]","//*[starts-with(@id, \"aep-abstract-sec-id\")]", "//*[starts-with(@id, \"sp\")]", "//*[starts-with(@id, \"spara\")]", "//*[starts-with(@id, \"simple-para\")]", "//*[starts-with(@id, \"abspara\")]", "//*[starts-with(@id, \"bspara\")]" ]
+        
+    elif code_url == "10.1364": #Optica
+        xpath = ["//*[@id=\"articleBody\"]/p[2]"]
+
+    elif code_url == "10.31031": #Crimson Publishers
+        xpath = ["//*[@id=\"wrap\"]/div[9]/div/div[1]/div[2]/div/div[2]/div[2]/div[1]/p[1]"]
+        
+    elif  code_url == "10.1038": #Nature Photonics
+        xpath = ["//*[@id=\"Abs1-content\"]/p"]
+        
+    elif  code_url == "10.3389": #Frontiers
+        xpath = ["//*[@id=\"similar-articles\"]/div[1]/main/div/div/div/div[2]/p"]
+        
+    elif  code_url == "10.1021": #ACS publications
+        xpath = ["//*[@id=\"abstractBox\"]/p"]
+        
+    elif  code_url == "10.1023" or code_url == "10.1007" or code_url == "10.1134" or code_url == "10.1307" or code_url == "10.3103" or code_url == "10.14232" or code_url == "10.1140": #Springer Link
+        xpath = ["//*[@id=\"Abs1-content\"]/p"]
+        
+    elif  code_url == "10.2307" or code_url == "10.1017" or code_url == "10.4208": #Cambridge Core
+        xpath = ["//*[@id=\"sec0\"]/div/div/div/div/p"]
+        
+    elif  code_url == "10.1002" or code_url == "10.1111": #Wiley OL
+        xpath = ["//*[@id=\"section-1-en\"]/div/p"]
+        
+    elif  code_url == "10.1103": #Purpose-led Publishing
+        xpath = ["//*[@id=\"article-content\"]/section[1]/div/p[1]"]
+        
+    elif  code_url == "10.1039": #Royal Society of chemistry
+        xpath = ["//*[@id=\"maincontent\"]/div[2]/div/div[1]/section/article/div[4]/div[1]/p"]
+        
+    elif  code_url == "10.1093": #Oxford Academic
+        xpath = ["//*[@id=\"ContentTab\"]/div[1]/div/div/section/p"]
+        
+    elif  code_url == "10.2144" or code_url == "10.4155": #Future Science
+        xpath = ["//*[@id=\"pb-page-content\"]/div/main/article/div/div[1]/div[4]/div[1]/div/p","//*[@id=\"pb-page-content\"]/div/main/article/div/div[1]/div[4]/div[1]/div[2]/p"]
+        
+    elif  code_url == "10.1063" or code_url == "10.1116": #AIP publishing
+        xpath = ["//*[@id=\"79634772\"]/section/p", "//*[@id=\"80149322\"]/section/p", "//*[starts-with(@id, \"0\")]", \
+                "//*[starts-with(@id, \"1\")]", "//*[starts-with(@id, \"2\")]", "//*[starts-with(@id, \"3\")]", "//*[starts-with(@id, \"4\")]",\
+                "//*[starts-with(@id, \"5\")]", "//*[starts-with(@id, \"6\")]", "//*[starts-with(@id, \"7\")]", "//*[starts-with(@id, \"8\")]",\
+                "//*[starts-with(@id, \"9\")]"] 
+        
+    elif  code_url == "10.1109" or code_url == "10.23919": #IEEExplore
+        xpath = ["//*[@id=\"xplMainContentLandmark\"]/div/xpl-document-details/div/div[1]/div/div[2]/section/div[2]/div/xpl-document-abstract/section/div[2]/div[1]/div/div", \
+                "//*[@id=\"xplMainContentLandmark\"]/div/xpl-document-details/div/div[1]/div/div[2]/section/div[2]/div/xpl-document-abstract/section/div[3]/div[1]/div/div/div", \
+                "//*[@id=\"xplMainContentLandmark\"]/div/xpl-document-details/div/div[1]/div/div[2]/section/div[2]/div/xpl-document-abstract/section/div[1]/div[1]/div/div/span[1]"]
+     
+    elif  code_url == "10.1146": #Annual reviews
+        xpath = ["//*[@id=\"article-level-0-front-and-body\"]/div[2]/p"]
+        
+    elif  code_url == "10.3390": #MDPI
+        xpath = ["//*[@id=\"html-abstract\"]/div"]
+        
+    elif  code_url == "10.1515" or code_url == "10.2478" or code_url == "10.1524" or code_url == "10.1163": #Degruyter
+        xpath = ["//*[@id=\"text-container\"]/div/div/div[1]/p"]
+        
+    elif  code_url == "10.1142": #World Scientific
+        xpath = ["//*[@id=\"pb-page-content\"]/div/main/article/div/div[1]/div[6]/div[2]/div/p"]
+        
+    elif  code_url == "10.4007": #Annals od Mathematics
+        xpath = ["//*[@id=\"post-9128\"]/div[2]/p"]
+        
+    elif  code_url == "10.1080" or code_url == "10.1081" or code_url == "10.13182": #Taylor & Francis online
+        xpath = ["//*[@id=\"mainTabPanel\"]/article/div[1]/p"]
+        
+    elif  code_url == "10.3762": #Beilstein journal of nanotechnology
+        xpath = ["//*[@id=\"abstract\"]/p"]
+        
+    elif  code_url == "10.1615": #Begell house digital library
+        xpath = ["/html/body/main/div/div[3]/div[3]","/html/body/main/div[2]/div/div[1]/div[3]/p","/html/body/main/div[2]/div/div[1]/div[3]/p","/html/body/main/div[2]/div/div[1]/div[3]/p", "/html/body/main/div[2]/div/div[1]/div[3]/p", "/html/body/main/section/div[2]/div[1]/div[3]/p", "/html/body/main/div/div[3]/div[3]", "/html/body/main/section/div[2]/div[1]/div[3]/p", "/html/body/main/div[2]/div/div[1]/div[3]/p", "/html/body/main/section/div[2]/div[1]/div[3]/p", "/html/body/main/section/div[2]/div[1]/div[3]/p", "/html/body/main/div[2]/div/div[1]/div[3]/p", "/html/body/main/div[2]/div/div[1]/div[1]/p/div[2]"]
+    
+        
+    elif  code_url == "10.1115": #ASME digital collection
+        xpath = ["//*[@id=\"23616760\"]/section/p"]
+        
+    elif  code_url == "10.2113" or code_url == "10.15372": #GeoScienceWorld
+        xpath = [ "//*[@id=\"141504439\"]/section/p",  "//*[@id=\"137482782\"]/section/p" , "//*[@id=\"141503834\"]/section/p", "//*[@id=\"138638985\"]/section/p", \
+                 "//*[@id=\"137442570\"]/section/p", "//*[@id=\"137447700\"]/section/p", "//*[@id=\"137462490\"]/section/p", "//*[@id=\"137449000\"]/section/p",\
+                 "//*[@id=\"138248357\"]/section", "//*[@id=\"137452013\"]/section/p", "//*[@id=\"137448617\"]/section/p", "//*[@id=\"abstract1\"]/p",\
+                 "//*[@id=\"137455357\"]/section/p", "//*[@id=\"137476031\"]/section/p", "//*[@id=\"137552155\"]/section/p", "//*[@id=\"141504201\"]/section/p", \
+                 "//*[@id=\"137457977\"]/section/p", "//*[@id=\"137448253\"]/section", "//*[@id=\"137464493\"]/section/p", "//*[@id=\"137462836\"]/section/p", \
+                 "//*[@id=\"137463033\"]/section/p", "//*[@id=\"bx_3966226736_165396\"]/tbody/tr/td/div[1]", \
+                 "//*[@id=\"137455357\"]/section/p", "//*[@id=\"137467519\"]/section/p", \
+                 "//*[@id=\"137464493\"]/section/p"]
+    
+    elif  code_url == "10.31660": # Известия вузов
+        xpath = ["//*[@id=\"articleAbstract\"]/div/p[1]"]
+        
+    elif  code_url == "10.1112": #london mathematical society
+        xpath = ["//*[@id=\"section-1-en\"]/div/p"]
+        
+    elif  code_url == "10.25205": # Сибирский физический журнал
+        xpath = ["//*[@id=\"articleAbstract\"]/div/p"]
+        
+    elif  code_url == "10.1137": #siam pub library
+        xpath = ["//*[@id=\"abstract\"]/div"]
+        
+    elif code_url == "10.2140":
+        xpath = ["//*[@id=\"content-area\"]/table[2]/tr[2]/td/p"]
+    
+    elif code_url == "10.3367" \
+        or code_url == "10.2138" or code_url == "10.2514" \
+        or code_url == "10.3233" or code_url == "10.46698" or code_url == "10.15439"\
+        or code_url == "10.15330" or code_url == "10.5121"\
+        or code_url == "10.12775" or code_url == "10.12693"\
+        or code_url == "10.56564": #trash
+        
+        xpath = ["1"]
+        
+    elif  code_url == "10.1098": #Royal Society of pubs
+        xpath = ["//*[@id=\"pb-page-content\"]/div/main/div[2]/div/div/article/div/div[1]/div/div[2]/div[4]/div[1]/div/p[1]"]
+        
+    elif  code_url == "10.3413": # Science Partner Journals
+        xpath = ["//*[@id=\"abstract\"]/div"]
+        
+    elif  code_url == "10.2118": #One Petro
+        xpath = ["//*[@id=\"10228795\"]/section/p"]
+        
+    elif  code_url == "10.2690": # Science Partner Journals
+        xpath = ["//*[@id=\"articleAbstract\"]/div/p[1]"]
+        
+    elif  code_url == "10.1155": # Hindawi
+        xpath = ["//*[@id=\"__next\"]/section/main/div[2]/div[2]/div/div[2]/div/p[1]"]
+        
+    elif  code_url == "10.1090": #American Mathematical Society
+        xpath = ["//*[@id=\"journals_main_div\"]/div/p[5]"]
+        
+    elif  code_url == "10.1117": #SPIE digital library
+        xpath = ["//*[@id=\"UsageTable0\"]/thead/tr/td/div/text"]
+        
+    elif  code_url == "10.1828": # Science Partner Journals
+        xpath = ["/html/body/p[6]"]
+        
+    elif  code_url == "10.1051": #web of conferences EPJ
+        xpath = ["//*[@id=\"head\"]/p[5]"]
+        
+    elif  code_url == "10.7151": #DMGT
+        xpath = ["//*[@id=\"main_div\"]/div"]
+        
+    elif  code_url == "10.1186": #future cities and env
+        xpath = ["//*[@id=\"__next\"]/div/div/div/div/div[2]/main/section/article/div[4]/div/div/span"]
+        
+    elif  code_url == "10.1177":  #sage journals
+        xpath = ["//*[@id=\"abstract\"]/div"]
+        
+    elif  code_url == "10.18699": #Вавиловский журнал
+        xpath = ["//*[@id=\"articleAbstract\"]/div"]
+        
+    elif  code_url == "10.1380": #J stage
+        xpath = ["//*[@id=\"article-overiew-abstract-wrap\"]/p"]
+        
+    elif  code_url == "10.2166": #IWA pub
+        xpath = ["//*[@id=\"511272\"]/section/p"]
+        
+    elif  code_url == "10.26493": #ARS MATHEMATICA CONTEMPORANEA
+        xpath = ["/html/body/div/div[1]/div[1]/div/article/div/div[1]/section[4]"]
+        
+    elif  code_url == "10.19181": #Управление наукой
+        xpath = ["//*[@id=\"pkp_content_main\"]/div/article/div/div[1]/div[3]/div"]
+        
+    elif  code_url == "10.19173": #IRRODL
+        xpath = ["/html/body/div[2]/div[1]/div[1]/div/article/div/div[1]/section[4]/p"]
+        
+    elif  code_url == "10.4213": #Математические заметки
+        xpath = ["/html/body/table[1]/tbody/tr/td/table[3]/tbody/tr/td[2]/div[4]"]
+        
+    elif  code_url == "10.20944": #Pre prints
+        xpath = ["//*[@id=\"submission-content\"]/div[6]"]
+        
+    elif  code_url == "10.15825": #Вестник трансплантологиии
+        xpath = ["//*[@id=\"articleAbstract\"]/h3"]
+        
+    elif  code_url == "10.37236": #the electronic journal of combinatorics 
+        xpath = ["//*[@id=\"pkp_content_main\"]/div/article/div/div[1]/div[3]/p"]
+        
+    elif  code_url == "10.4310": #international press
+        xpath = ["//*[@id=\"mainbody\"]/div[3]/p[5]"]
+        
+    elif  code_url == "10.1139": #canadian science pub
+        xpath = ["//*[@id=\"abstract\"]/div"]
+        
+    elif  code_url == "10.1107": #journal of synchrotron radiation
+        xpath = ["//*[@id=\"articlekv2013\"]/div[2]/div[2]/div[4]"]
+        
+    elif  code_url == "10.2298": #DOISerbia
+        xpath = ["//*[@id=\"ContentPlaceHolder1_ArticleDetails2_labelArticleAbstract\"]/p"]
+        
+    elif code_url == "10.1305" or code_url == "10.1215": #Project Euclid
+        xpath = ["//*[@id=\"divArticleContent\"]/div/div/div/text[1]/div/p"]
+        
+    elif code_url == "10.1585" or code_url == "10.1299" or code_url == "10.5359": #Jstage
+        xpath = ["//*[@id=\"article-overiew-abstract-wrap\"]/p[2]", "//*[@id=\"article-overiew-abstract-wrap\"]/div[2]"]
+
+    elif  code_url == "10.5220": #ScitePress
+        xpath = ["//*[@id=\"ContentPlaceHolder1_LinkPaperPage_LinkPaperContent_LabelAbstract\"]"]
+
+    elif  code_url == "10.5800": #Геодинамика и тектонофизика
+        xpath = ["//*[@id=\"articleAbstract\"]/div/p"]
+
+    elif  code_url == "10.1145": #ACM digital library
+        xpath = ["//*[@id=\"skip-to-main-content\"]/main/div[1]/article/div[2]/div[2]/div[2]/div[1]/div/div[2]/p"]
+
+    elif  code_url == "10.17323": #HSE bis inf
+        xpath = ["//*[@id=\"bi\"]/tbody/tr[2]/td[2]/div[2]"]
+
+    elif  code_url == "10.20537": # Компьютерные исследования и моделирования
+        xpath = ["//*[@id=\"middle_container\"]/div[3]/div[1]/p"]
+
+    elif  code_url == "10.1101": #Medrxiv
+        xpath = ["//*[@id=\"p-3\"]"]
+
+    elif  code_url == "10.1556": #AKJournals
+        xpath = ["//*[@id=\"pageBody\"]/div/div[1]/div/div[1]/div/div/div/div[4]/div"]
+
+    elif  code_url == "10.24963": #ijcai
+        xpath = ["//*[@id=\"block-system-main\"]/div/div/div[3]/div[1]"]
+
+    elif  code_url == "10.33048" or code_url == "10.20948" or code_url == "10.14498": #Mathnet
+        xpath = ["/html/body/table[1]/tbody/tr/td/table[3]/tbody/tr/td[2]/div[4]"]
+
+    elif  code_url == "10.4236": #Scientific Research
+        xpath = ["//*[@id=\"JournalInfor_div_paper\"]/div[3]/p[2]/span[1]"]
+
+    elif  code_url == "10.54362": #Журнал нгу
+        xpath = ["//*[starts-with(@id, \"bx\")][contains(@id, \"tab_containers\")]/div[6]"]
+    
+
+    elif  code_url == "10.1190": #Crossref choice
+        xpath = ["1"]
+
+    elif  code_url == "10.4171": #ems press
+        xpath = ["//*[@id=\"__next\"]/div/main/article/div/main/div[1]/p"]
+
+    elif  code_url == "10.17816": #Эко-вектор журнал
+        xpath = ["//*[@id=\"articleAbstract\"]/div"]
+    
+    elif  code_url == "10.21662": #Многофазные системы
+        xpath = ["/html/body/div[2]/div[2]/div/div[1]/div[2]/div[4]/p"]
+
+    elif  code_url == "10.2498": #CIT
+        xpath = ["//*[@id=\"articleAbstract\"]/div"]
+
+    elif  code_url == "10.17073": #Известия вузов черная металлургия
+        xpath = ["//*[@id=\"articleAbstract\"]/div/p"]
+
+    elif  code_url == "10.4209": #Aerosol and air quality research
+        xpath = ["//*[@id=\"t3-content\"]/div[1]/article/section/span"]
+
+    elif  code_url == "10.22323": #Proceedings of science
+        xpath = ["//*[@id=\"landing-page\"]/div[6]/div"]
+
+    elif  code_url == "10.3997": #EarthDoc
+        xpath = ["//*[@id=\"abstract_content\"]/div[1]/div/div/p"]
+
+    elif  code_url == "10.1287": #PubsOnline
+        xpath = ["//*[@id=\"pb-page-content\"]/div/main/article/div/div[2]/div[3]/div/div[1]/div[2]"]
+
+    elif  code_url == "10.18303": #Геофизические технологии
+        xpath = ["//*[@id=\"articleAbstract\"]/div/p"]
+
+    elif  code_url == "10.2139": #SSRN
+        xpath = ["//*[@id=\"maincontent\"]/div[3]/div[1]/div[2]/div[3]/p[1]"]
+
+    elif  code_url == "10.22363": #РУДН
+        xpath = ["//*[@id=\"articleAbstract\"]/div/p"]
+        
+    elif code_url == "10.18653": #acl anthology
+        xpath = ["//*[@id=\"main\"]/div[2]/div[1]/div/div/span"]
+
+    elif code_url == "10.29039": #riorpub
+        xpath = ["//*[@id=\"collapse-2\"]/div/div[1]"]
+        
+    elif code_url == "10.14529": #superfri
+        xpath = ["/html/body/div/div[1]/div[1]/div/article/div/div[1]/section[3]"]
+        
+    elif code_url == "10.32920": #rshare
+        xpath = ["//*[@id=\"app\"]/div/div[1]/main/div/div[3]/div/div[2]/div[1]/div[2]/p"]
+        
+    elif code_url == "10.24330": #dergipark
+        xpath = ["//*[@id=\"article_en\"]/div[3]/p"]
+        
+    elif code_url == "10.36227": #techrxiv
+        xpath = ["/html/body/div[3]/div/div[2]/div/div/div[1]/div[5]/div/div[6]/div"]
+        
+    elif code_url == "10.21203": #researchsquare
+        xpath = ["//*[@id=\"__next\"]/div/div[2]/div/div/div/div/div[1]/div/div/div[5]/div[2]/div/span/p"]
+        
+    elif code_url == "10.18412": #catalysis-kalvis
+        xpath = ["//*[@id=\"articleAbstract\"]/div/p"]
+        
+    elif code_url == "10.21883": #journals.ioffe
+        xpath = ["//*[@id=\"yw4_tab_0\"]"]
+        
+    elif code_url == "10.33257" or code_url == "10.54965" or code_url == "10.25018" or code_url == "10.53954" or code_url == "10.21603": #elibrary
+        xpath = ["//*[@id=\"abstract2\"]/p","//*[@id=\"abstract1\"]/p"]
+        
+    elif code_url == "10.54985" or code_url == "10.22541": #peeref
+        xpath = ["//*[@id=\"app\"]/main/div[1]/div[1]/div[1]/div[4]/dl[3]/dd", "/html/body/div[3]/div/div[2]/div/div/div[1]/div[5]/div/div[9]"]
+        
+    elif code_url == "10.26089": #num-meth
+        xpath = ["/html/body/div[2]/div[1]/div[1]/div/article/div/div[1]/section[4]/p"]
+        
+    elif code_url == "10.2205": #rjes
+        xpath = ["//*[@id=\"collapse-2\"]/div/div[1]"]
+        
+    elif code_url == "10.17537": #matbio
+        xpath = ["/html/body/table/tbody/tr[4]/td[2]/table/tbody/tr[4]/td[1]/div/div[1]"]
+        
+    elif code_url == "10.1504": #inderscience
+        xpath = ["/html/body/main/div/div[1]/div/div/p[1]/font"]
+        
+    elif code_url == "10.31857": #eco-vecto
+        xpath = ["//*[@id=\"articleAbstract\"]/div/p"]
+        
+    elif code_url == "10.34020": #nsuem.elpub
+        xpath = ["//*[@id=\"articleAbstract\"]/div"]
+        
+    elif code_url == "10.26782": #journalimcms
+        xpath = ["//*[@id=\"content\"]/div[2]/div/em"]
+        
+    elif code_url == "10.18599": #geors
+        xpath = ["//*[@id=\"annotation\"]/p[1]"]
+        
+    elif code_url == "10.20913": #gpntbsib
+        xpath = ["//*[@id=\"articleAbstract\"]/div/p"]
+        
+    elif code_url == "10.33667": #med-alphabet
+        xpath = ["//*[@id=\"articleAbstract\"]/div"]
+        
+    elif code_url == "10.25587": #mzsvfu
+        xpath = ["//*[@id=\"pkp_content_main\"]/div/article/div/div[1]/div[3]/p"]
+        
+    elif code_url == "10.12691": #ujp.bitp
+        xpath = ["/html/body/div/div[1]/div[1]/div/article/div/div[1]/section[4]/p"]
+        
+    elif code_url == "10.15862": #kostumologiya
+        xpath = ["//*[@id=\"post-3154\"]/div[1]/p[12]"]
+
+    elif code_url == "10.5923": #Scientific & AcademicPublishing
+        xpath = ["//*[@id=\"paperMainBox\"]/div[2]/div[2]/p[7]"]
+
+    elif code_url == "10.3842": #emis.de
+        xpath = ["/html/body/table[2]/tbody/tr/td[2]/p[3]"]
+    
+    elif code_url == "10.48550": #arxiv.org
+        xpath = ["//*[@id=\"abs\"]/blockquote"]
+    
+    elif code_url == "10.46298": #dmtcs
+        xpath = ["//*[@id=\"container\"]/div[2]/div[2]/div/div[1]/div/div[2]/p[3]"]
+    
+    elif code_url == "10.1201": #taylorfrancis
+        xpath = ["//*[@id=\"collapseContent\"]/div/p"]
+    
+    elif code_url == "10.1162": #direct.mit.edu
+        xpath = ["//*[@id=\"2825449\"]/section/p"]
+    
+    elif code_url == "10.15826": #journals.urfu.ru
+        xpath = ["//*[@id=\"articleAbstract\"]/div/p[1]"]
+    
+    elif code_url == "10.15293": #en.sciforedu.ru
+        xpath = ["//*[@id=\"node-3363\"]/div[7]/div/div[2]/div/p"]
+    
+    elif code_url == "10.14311": #ojs.cvut.cz
+        xpath = ["/html/body/div/div[1]/div[1]/div/article/div/div[1]/section[4]"]
+    
+    elif code_url == "10.24887": #oil-industry.net
+        xpath = ["//*[@id=\"bx_117848907_233853\"]/div[7]/p[1]"]
+    
+    elif code_url == "10.33186": #ntb.gpntb.ru
+        xpath = ["//*[@id=\"articleAbstract\"]/div/p"]
+    
+    elif code_url == "10.1214": #projecteuclid.org
+        xpath = ["//*[@id=\"ID0EF\"]"]
+    
+    elif code_url == "10.11648": #sciencepublishinggroup.com
+        xpath = ["//*[@id=\"abstract\"]/p"]
+    
+    elif code_url == "10.15393": #Не открылась у меня
+        xpath = ["1"]
+    
+    elif code_url == "10.2351": #pubs.aip.org
+        xpath = ["//*[@id=\"82509457\"]/section/p"]
+    
+    elif code_url == "10.30724": #energyret.ru
+        xpath = ["//*[@id=\"articleAbstract\"]/div/p[1]"]
+    
+    elif code_url == "10.17586": #pribor.ifmo.ru
+        xpath = ["//*[@id=\"content\"]/div[1]"]
+
+    elif code_url == "10.21285": #ipolytech.elpub.ru
+        xpath = ["//*[@id=\"articleAbstract\"]/div/p"]
+    
+    elif code_url == "10.30853": #philology-journal.ru
+        xpath = ["/html/body/main/article/div[2]/div[2]/p[1]"]
+    
+    elif code_url == "10.2991": #atlantis-press
+        xpath = ["//*[@id=\"contentPage\"]/div/div/article/dl/dd[3]/div/p"]
+    
+    elif code_url == "10.1049": #ietresearch.onlinelibrary.wiley.com
+        xpath = ["//*[@id=\"section-1-en\"]/div/p"]
+    
+    elif code_url == "10.4231": #nanohub.org
+        xpath = ["//*[@id=\"about-section\"]/div/div[2]/div[2]"]
+    
+    elif code_url == "10.2174": #eurekaselect.com
+        xpath = ["//*[@id=\"abstract\"]"]
+    
+    elif code_url == "10.15866": #praiseworthyprize.org
+        xpath = ["//*[@id=\"articleAbstract\"]/div/p"]
+    
+    elif code_url == "10.1061": #ascelibrary.org
+        xpath = ["//*[@id=\"abstract\"]/div"]
+    
+    elif code_url == "10.4230": #drops.dagstuhl.de
+        xpath = ["//*[@id=\"app\"]/div[3]/div/div[2]/section[2]/div"]
+    
+    elif code_url == "10.25296": #geomark.ru
+        xpath = ["//*[@id=\"nav-annotation-ru\"]/p"]
+
+    elif code_url == "10.1049": #ietresearch.onlinelibrary.wiley.com
+        xpath = ["//*[@id=\"section-1-en\"]/div/p"]
+    
+    elif code_url == "10.14258": #Известия Алтайского государственного университета
+        xpath = ["//*[@id=\"pkp_content_main\"]/div/article/div/div/div[3]/p[1]"]
+    
+    elif code_url == "10.3850": #ISSW 32 2019
+        xpath = ["//*[@id=\"colTwo\"]/table/tbody/tr/td/blockquote/font/p"]
+    
+    elif code_url == "10.38028": #ИМТ
+        xpath = ["/html/body/main/div/div/section/div/div[3]/div/p[2]"]
+    
+    elif code_url == "10.2523": #OnePetro
+        xpath = ["//*[@id=\"9864677\"]/section/p[1]"]
+    
+    elif code_url == "10.17673": #Вестник Самарского государственного технического университета
+        xpath = ["//*[@id=\"articleAbstract\"]/div/p"]
+    
+    elif code_url == "10.55648": #Вестник СибГУТИ
+        xpath = ["//*[@id=\"articleAbstract\"]/div/p"]
+    
+    elif code_url == "10.32446": #Измерительная техника
+        xpath = ["//*[@id=\"articleAbstract\"]/div/p"]
+    
+    elif code_url == "10.52209" or code_url == "10.47850" or code_url == "10.53403" or code_url == "10.38163" or code_url == "10.46960"\
+        or code_url == "10.20310" or code_url == "10.34076": #elibrary
+        xpath = ["//*[@id=\"abstract1\"]/p", "//*[@id=\"abstract2\"]/p"]
+    
+    elif code_url == "10.9734": #Innovations in Science and Technology 
+        xpath = ["//*[@id=\"articleTab\"]/p"]
+    
+    elif code_url == "10.23951": #Научно-педагогическое обозрение
+        xpath = ["//*[@id=\"center_side\"]/div[1]/section/div/p[6]"]
+    
+    elif code_url == "10.22226": #Letters on materials
+        xpath = ["//*[@id=\"aspnetForm\"]/div[4]/div[1]/div/article/div[5]/section[1]/div"]
+    
+    elif code_url == "10.18255": #МАИС
+        xpath = ["//*[@id=\"articleAbstract\"]/div/p"]
+    
+    elif code_url == "10.17353": #Нефтегазовая геология. Теория и практика
+        xpath = ["/html/body/div[2]/div[3]/div/div/div[2]/div/table/tbody/tr[4]/td[2]"]
+    
+    elif code_url == "10.18260": #ASEE PEER
+        xpath = ["//*[@id=\"abstract\"]/div/blockquote/p"]
+    
+    elif code_url == "10.17513": #Современные проблемы науки и образования
+        xpath = ["//*[@id=\"w0-tab1\"]/small"]
+    
+    elif code_url == "10.31675": #Вестник Томского государственного архитектурно-строительного университета
+        xpath = ["//*[@id=\"articleAbstract\"]/div/p[2]/span[3]"]
+    
+    elif code_url == "10.13137": #Openstarts
+        xpath = ["//*[@id=\"cris-layout-loader\"]/div/div/ds-cris-layout-matrix/div/div[1]/div/ds-cris-layout-box-container/div/ds-cris-layout-metadata-box/div/div[8]/div/ds-metadata-container/div/div/div/ds-metadata-render/span/div/span"]
+    
+    elif code_url == "10.18409": #14th International Symposium on Particle Image Velocimetry
+        xpath = ["/html/body/div/div[1]/div/div/article/div/div[1]/section[4]/p"]
+    
+    elif code_url == "10.26583": #Scientific Visualization
+        xpath = ["//*[@id=\"texts\"]/p[10]", "//*[@id=\"texts\"]/p[11]", "//*[@id=\"texts\"]/p[12]"]
+    
+    elif code_url == "10.17212": #Обработка металлов
+        xpath = ["//*[@id=\"tabs1-annot\"]/div[1]/p"]
+    
+    elif code_url == "10.36535": #Электронный каталог научно-технической литературы
+        xpath = ["//*[@id=\"ResultTable\"]/tbody/tr[4]/td/table/tbody/tr[19]/td[2]"]
+    
+    elif code_url == "10.22564": #Brazilian Journal of Geophysics
+        xpath = ["//*[@id=\"articleAbstract\"]/div/p[1]"]
+
+    elif code_url == "10.18799": #Известия Томский политех
+        xpath = ['/html/body/div[4]/div/div[1]/div/article/div']
+    
+    elif code_url == "10.31992": #Высшее образование в России
+        xpath = ['//*[@id=\"articleAbstract"]/div/p/span/em/span']
+    
+    elif code_url == "10.52292": #Latin American Applied Research
+        xpath = ['/html/body/div/div[1]/div[1]/div/article/div/div[1]/section[4]/p/strong']
+    
+    elif code_url == "10.21684": #Вестник ТЮМГУ
+        xpath = ['//*[@id=\"content1\"]/div[7]']
+    
+    elif code_url == "10.1108": #Discover Journals, Books & Case Studies
+        xpath = ['//*[@id=\"abstract"]/div/section']
+    
+    elif code_url == "10.18097": #Biomeditsinskaya Khimiya
+        xpath = ['//*[@id=\"0t"]/tbody/tr/td[1]/table/tbody/tr[7]/td']
+    
+    elif code_url == "10.46586": #RUHR Universitat Bochum
+        xpath = ['/html/body/div/div[1]/div[1]/div/article/div/div[1]/section[4]/p']
+    
+    elif code_url == "10.1260": #Sage Journals
+        xpath = ['//*[@id=\"abstract"]/div']
+    
+    elif code_url == "10.18321": #Eurasian chemico-technological journal
+        xpath = ['/html/body/div/div[1]/div[1]/div/article/div/div[1]/section[4]/p']
+    
+    elif code_url == "10.18814": #Journal of international geoscience
+        xpath = ['//*[@id=\"fulltext_Area"]/p']
+    
+    elif code_url == "10.1121": #Journal of the Acoustical Society of America
+        xpath = ['//*[@id=\"55012442"]/section/p']
+    
+    elif code_url == "10.5334": #Future cities and environment
+        xpath = ['//*[@id=\"article-container"]/section/div[1]/div[3]/div']
+    
+    elif code_url == "10.4204": #ARXIV
+        xpath = ['//*[@id=\"abs"]/blockquote/span']
+    
+    elif code_url == "10.12731": #International Journal of advanced studies
+        xpath = ['//*[@id=\"articleAbstract"]/div/p[1]']
+    
+    elif code_url == "10.4229": #Eupvsec
+        xpath = ['/html/body/div[3]/div[2]/div[2]/div[1]/div/p']
+    
+    elif code_url == "10.2753": #Taylor and Francis Online
+        xpath = ['//*[@id=\"mainTabPanel"]/article/div[1]/p']
+    
+    elif code_url == "10.5071": #European biomass conference and exhibition proceeding
+        xpath = ['//*[@id=\"main-large"]/table[2]/tbody/tr[5]/td[2]/p']
+    
+    elif code_url == "10.22436": #Journal of nonlinear sciences and applications
+        xpath = ['/html/body/div[4]/div/p[2]']
+    
+    elif code_url == "10.5194": #The International Archives of the Photogrammetry, Remote Sensing and Spatial Information Sciences
+        xpath = ['//*[@id=\"page_content_container"]/div/div[1]/div[8]/p']
+    
+    elif code_url == "10.3970": #Tech science press
+        xpath = ['//*[@id=\"section_abstract"]']
+    
+    elif code_url == "10.4064": #Польская академия наук
+        xpath = ['/html/body/div[3]/div/div[5]/div[2]/div[2]/p']
+    
+    elif code_url == "10.22184": #Наноиндустрия
+        xpath = ['//*[@id=\"DOM_ready"]/div/div[14]/div/div[2]/div[2]/span']
+    
+    elif code_url == "10.31577": #Computing and Informatics
+        xpath = ['/html/body/div/div[1]/div[1]/div/article/div/div[1]/section[4]/p']
+    
+    elif code_url == "10.29007": #EasyChair
+        xpath = ['//*[@id=\"content_table"]/tbody/tr/td/div'] #Strange
+    
+    elif code_url == "10.2495": #Site
+        xpath = ["1"] #Not found
+    
+    elif code_url == "10.51890": #Site
+        xpath = ["1"] #Not found
+    
+    elif code_url == "10.24423": #Site
+        xpath = ["1"] #Not found
+    
+    elif code_url == "10.5555": #Site
+        xpath = ["1"] #Not found
+    
+    elif code_url == "10.15802": #Site
+        xpath = ["1"] #No open
+    
+    elif code_url == "10.37560": #Site
+        xpath = ["1"] #Blocked
+    
+    elif code_url == "10.25743": #CEUR Workshop Proceedings
+        xpath = ["1"] #PDF
+    
+    elif code_url == "10.21611": #Quantitative InfraRed Thermography
+        xpath = ["1"] #PDF
+    
+    elif code_url == "10.17516": #Архив электронных ресурсов СФУ
+        xpath = ["1"] #PDF
+    
+    elif code_url == "10.20533": #Infonomics society
+        xpath = ["1"] #PDF
+    
+    elif code_url == "10.7712": #ECCOMAS Congresses
+        xpath = ["1"] #PDF
+    
+    elif code_url == "10.15514": #syrcose
+        xpath = ["1"] #PDF
+    
+    elif code_url == "10.5359": #Jstage
+        xpath = ["1"] #JPG
+    
+    elif code_url == "10.3145": #Revista
+        xpath = ["1"] #WTF
+        
+    elif code_url == "10.34133":
+        xpath = ["//*[@id=\"abstract\"]/div"]
+        
+    elif code_url == "10.26907":
+        xpath = ["//*[@id=\"articleAbstract\"]/div/p[1]"]
+
+    elif code_url == "10.18287":
+        xpath = ["/html/body/p[6]"]
+
+    elif code_url == "10.4028":
+        xpath = ["/html/body/div[1]/div[1]/div[3]/div/div/div[2]/div[5]/div[2]/p"]
+
+    elif code_url == "10.14258":
+        xpath = ["//*[@id=\"pkp_content_main\"]/div/article/div/div/div[3]/p[1]"]
+
+    elif code_url == "10.17673":
+        xpath = ["//*[@id=\"articleAbstract\"]/div/p"]
+
+    elif code_url == "10.38028":
+        xpath = ["/html/body/main/div/div/section/div/div[3]/div/p[2]"]
+
+    elif code_url == "10.32454" or code_url == "10.21603" or code_url == "10.33184" or code_url == "10.31868" or code_url == "10.25681"\
+        or code_url == "10.47350" or code_url == "10.15587" or code_url == "10.52081" or code_url == "10.2172" or code_url == "10.22227"\
+        or code_url == "10.14293" or code_url == "10.59043" or code_url == "10.3144" or code_url == "10.4186" or code_url == "10.12988" \
+        or code_url == "10.30757" or code_url == "10.5281" or code_url == "10.47475" or code_url == "10.1144" or code_url == "10.15407"\
+        or code_url == "10.5772" or code_url == "10.33764" or code_url == "10.54238" or code_url == "10.35540" or code_url == "10.5186"\
+        or code_url == "10.15593" or code_url == "10.53482" or code_url == "10.19261" or code_url == "10.17377" or code_url == "10.32454"\
+        or code_url == "10.11159" or code_url == "" or code_url == "" or code_url == "" or code_url == ""\
+        or code_url == "" or code_url == "" or code_url == "" or code_url == "" or code_url == ""\
+        or code_url == "" or code_url == "" or code_url == "" or code_url == "" or code_url == "": #не открываются/нет абстракта/pdf
+        xpath = ["1"]
+    else:
+        xpath = ["0"]
+    return xpath
+
+
+
+pager = Works().filter(institutions={"id":"https://openalex.org/I188973947"}).filter(primary_topic={"field":{"id":"26|22|17"}}).paginate(per_page=200)
+fields = dict()
+
+options = Options()
+options.page_load_strategy = 'none'
+driver = webdriver.Chrome(options=options)
+
+skipped_dois = list()
+
+target_institution_ids = ['https://openalex.org/I188973947']
+
+for i, page in enumerate(pager):
+    print(f"[{datetime.datetime.now().isoformat()}] Page {i}")
+    for work in tqdm.tqdm(page):
+        try:
+            url_cnt = work["doi"]
+
+            if url_cnt != None and url_cnt[23] in "1234567890": #Получение кода doi
+                code_url = url_cnt[16:24]
+            elif url_cnt != None:
+                code_url = url_cnt[16:23]
+            else:
+                continue 
+                
+            try:
+                driver.get(url_cnt)
+                
+            except WebDriverException:
+                skipped_dois.append(url_cnt)
+                continue
+                    
+            try:        
+                WebDriverWait(driver, 15).until(
+                    EC.any_of(*[EC.presence_of_element_located(('xpath', x)) for x in xp])
+                )
+            except Exception:
+                skipped_dois.append(url_cnt)
+                continue
+                
+            try:
+                html = str(driver.page_source)
+                soup = BeautifulSoup(html, "html.parser")
+            except Exception:
+                continue
+            
+            try:
+                title = soup.find("h1").text
+            except AttributeError:
+                
+                WebDriverWait(driver, 5).until(
+                    EC.any_of(*[EC.presence_of_element_located(('xpath', x)) for x in xp])
+                    # wait until the lowest table is downloaded
+                )
+                html = str(driver.page_source) 
+                soup = BeautifulSoup(html, "html.parser") 
+
+                try:
+                    title = soup.find("h1").text
+                    
+                except AttributeError:
+                    pass
+      
+            if len(title) == 0 or "<" in title or ">" in title:
+                title = work["display_name"]
+                
+                
+            abstract = ""
+            
+            for xpath in xp:
+                elems = driver.find_elements(By.XPATH, xpath)
+                
+                if len(elems) == 0:
+                    continue
+                try:
+                    for i in range(len(elems)):
+                        temp_abs = elems[i].text
+                    
+                        if "Other articles from this issue" not in temp_abs and "REFERENCES" not in temp_abs and "References" not in temp_abs and "references" not in temp_abs:
+                            abstract += temp_abs
+                        else:
+                            break
+                    
+                except Exception:
+                    
+                    continue
+                    
+            abstract = abstract[abstract.find("Материал поступил в редколлегию") + len("Материал поступил в редколлегию 04.12.2007"):abstract.find("Источник финансирования:")]
+            title = title.strip()
+
+            for author_in_work in work["authorships"]:
+                author_institutions = author_in_work.get("institutions", [])
+                is_target_institution = any(
+                    institution["id"] in target_institution_ids for institution in author_institutions)
+                if is_target_institution:
+                    current_author = author_in_work["author"]["id"]
+                else:
+                    continue
+                if current_author in fields:
+                    f_to_add = 1
+                    for field_author in fields[current_author][1]:
+                        if field_author["article_id"] == work["id"]:
+                            f_to_add = 0
+                            break
+                    if f_to_add == 1:
+                        fields[current_author][1].append({"article_id" : work["id"], "article_title" : title, "article_abstract" : abstract})
+                else:
+                    fields[current_author] = [translit(author_in_work["author"]["display_name"], language_code='ru', reversed=True), [{"article_id" : work["id"], "article_title" : title, "article_abstract" : abstract}]]
+
+        except Exception:
+            requests.post("https://ntfy.sh/228-1337-scientific-parser-666", data="Error".encode(encoding='utf-8'))
+            print(f"Fuck! {traceback.format_exc()} {work['doi']}")
+            skipped_dois.append(url_cnt)
+    
+    
+        

@@ -13,6 +13,7 @@ RUN pip install -r /app/requirements.txt
 COPY entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh
 
+COPY ./index/ /app/index/
 COPY ./semantic_vs_unigrams_search/ /app/semantic_vs_unigrams_search/
 
 EXPOSE 7860

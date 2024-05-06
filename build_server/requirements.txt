@@ -1,0 +1,6 @@
+gradio
+pandas
+pyarrow
+sentence_transformers
+
+

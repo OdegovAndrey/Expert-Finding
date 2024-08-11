@@ -1,27 +1,27 @@
-import lucene
+# import lucene
 import os
 import gradio as gr
 import pandas as pd
 from sentence_transformers import SentenceTransformer
 from build_server.semantic_vs_unigrams_search import search_semantic, search_unigrams
 
-from org.apache.lucene.analysis.en import EnglishAnalyzer
-from org.apache.lucene.search.similarities import LMJelinekMercerSimilarity
+# from org.apache.lucene.analysis.en import EnglishAnalyzer
+# from org.apache.lucene.search.similarities import LMJelinekMercerSimilarity
 
 data = search_semantic.get_data(os.environ.get("PATH_TO_DATA"))
 model = SentenceTransformer('sentence-transformers/all-MiniLM-L6-v2').to('cpu')
 
-def gradio_search_unigrams(_query, _top_number, _details_number):
-    print(_query)
-    _vm_env = lucene.getVMEnv()
-    _vm_env.attachCurrentThread()
-    try:
-        _result = search_unigrams.search_for_query(_query, _top_number, _details_number, 'index', LMJelinekMercerSimilarity(0.7), EnglishAnalyzer())
-    except Exception as e:
-        print(repr(e))
-        _result = pd.DataFrame({'Некорректный запрос': []}).to_html(escape=False, index=False)
-    _result = '<div style="display: block; width: 100%; overflow-x: auto;">' + _result + '</div>'
-    return _result
+# def gradio_search_unigrams(_query, _top_number, _details_number):
+#     print(_query)
+#     _vm_env = lucene.getVMEnv()
+#     _vm_env.attachCurrentThread()
+#     try:
+#         _result = search_unigrams.search_for_query(_query, _top_number, _details_number, 'index', LMJelinekMercerSimilarity(0.7), EnglishAnalyzer())
+#     except Exception as e:
+#         print(repr(e))
+#         _result = pd.DataFrame({'Некорректный запрос': []}).to_html(escape=False, index=False)
+#     _result = '<div style="display: block; width: 100%; overflow-x: auto;">' + _result + '</div>'
+#     return _result
 
 def gradio_search_semantic(_query, _top_number, ):
     print(_query)
@@ -34,7 +34,7 @@ def gradio_search_semantic(_query, _top_number, ):
     return _result
 
 if __name__ == '__main__':
-    lucene.initVM()
+    # lucene.initVM()
 
     theme = gr.themes.Soft(
     primary_hue=gr.themes.Color(c100="#54b686", c200="#e5e7eb", c300="#d1d5db", c400="#434242", c50="#f3f2f2", c500="#ffffff", c600="#54b686", c700="#374151", c800="#1f2937", c900="#111827", c950="#0b0f19"),
@@ -86,14 +86,14 @@ if __name__ == '__main__':
         input_text = gr.Textbox(label="Запрос", placeholder="Чем подробнее вы опишите тему, тем более релевантных экспертов покажет программа")
         slider_people = gr.Slider(1, 50, value=10, step=1, label="Количество экспертов")
         button = gr.Button("Показать", variant="primary")
-        with gr.Tab("Поиск по униграммам"):
-            gr.Markdown("""# Результаты поиска по униграммам
-                        **Оценка релевантности** складывается из весов ключевых слов.\n
-                        В столбцах типа **"Слово N: вес"** указаны слова, наибольшим образом повлиявшие на оценку релевантности эксперта. Для каждого слова указан его вес.\n
-                        - Вы можете изменить отображаемое количество столбцов **"Слово N: вес"**, подвинув слайдер **"Количество столбцов "Слово N: вес""** на значение N. 
-                        По умолчанию такие столбцы отсутствуют.""")
-            slider_tokens = gr.Slider(0, 20, step=1, label='Количество столбцов "Слово N: вес"')
-            output_name_1 = gr.HTML(label="Список экспертов", show_label=True)
+        # with gr.Tab("Поиск по униграммам"):
+        #     gr.Markdown("""# Результаты поиска по униграммам
+        #                 **Оценка релевантности** складывается из весов ключевых слов.\n
+        #                 В столбцах типа **"Слово N: вес"** указаны слова, наибольшим образом повлиявшие на оценку релевантности эксперта. Для каждого слова указан его вес.\n
+        #                 - Вы можете изменить отображаемое количество столбцов **"Слово N: вес"**, подвинув слайдер **"Количество столбцов "Слово N: вес""** на значение N.
+        #                 По умолчанию такие столбцы отсутствуют.""")
+        #     slider_tokens = gr.Slider(0, 20, step=1, label='Количество столбцов "Слово N: вес"')
+        #     output_name_1 = gr.HTML(label="Список экспертов", show_label=True)
         with gr.Tab("Семантический поиск"):
             gr.Markdown("""# Результаты семантического поиска
                         **Оценка релевантности** является средневзвешенной оценкой **трех наиболее релевантных запросу статей** автора.
@@ -102,7 +102,7 @@ if __name__ == '__main__':
                         - В столбцах типа **"Релевантная статья N"** указаны три **наиболее релевантные запросу статьи**, по которым строится оценка релевантности.""")
             output_name_2 = gr.HTML(label="Список экспертов", show_label=True)
 
-        button.click(fn=gradio_search_unigrams, inputs=[input_text, slider_people, slider_tokens], outputs=output_name_1)
+        # button.click(fn=gradio_search_unigrams, inputs=[input_text, slider_people, slider_tokens], outputs=output_name_1)
         button.click(fn=gradio_search_semantic, inputs=[input_text, slider_people], outputs=output_name_2)
 
     if os.environ.get("ISDOCKER", None):

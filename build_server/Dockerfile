@@ -1,5 +1,5 @@
 #FROM mashasha/pylucene:latest
-FROM coady/pylucene:latest
+FROM python:3.12-bookworm
 
 RUN mkdir -p /app || true
 WORKDIR /app
